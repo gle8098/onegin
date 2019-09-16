@@ -19,11 +19,39 @@ long int findSize(const char *file_name)
 char *book;
 int size;
 
+int my_strcmp(const char *str1, const char *str2) {
+    while (1) {
+        while (*str1 != '\0' && ((*str1 & 0x80) == 0) && (*str1 >= 'A' && *str1 <= 'Z') && (*str1 >= 'a' && *str1 <= 'z')) {
+            ++str1;
+        }
+        while (*str2 != '\0' && ((*str2 & 0x80) == 0) && (*str2 >= 'A' && *str2 <= 'Z') && (*str2 >= 'a' && *str2 <= 'z')) {
+            ++str2;
+        }
+
+        if (*str1 != *str2) {
+            return (*str1) < (*str2) ? -1 : 1;
+        }
+
+        if (*str1 == '\0') {
+            return 0;
+        }
+
+        ++str1;
+        ++str2;
+    }
+}
+
+int main0() {
+    printf("%d\n", my_strcmp("абв", "ааа"));
+
+    return 0;
+}
+
 int shuffle_cmp(const void * a, const void * b) {
     int ind1 = *((int*)a);
     int ind2 = *((int*)b);
-    
-    return strcmp(&book[ind1], &book[ind2]);
+
+    return my_strcmp(&book[ind1], &book[ind2]);
 }
 
 // 1. Узнать размер файла
