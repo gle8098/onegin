@@ -88,7 +88,7 @@ void test_ReadUtf8Char() {
 }
 
 int shuffle_direction = 1;
-int shuffle_cmp(const void * a, const void * b) {
+int shuffle_cmp(const void * a, const void * b) { // давать структуру string_view
     int ind1 = *((int*)a);
     int ind2 = *((int*)b);
     //printf("shuffle_cmp: %d %d\n", ind1, ind2);
@@ -124,13 +124,17 @@ int shuffle_cmp(const void * a, const void * b) {
         //printf("%x %x\n", char1, char2);
 
         if (char1 != char2) {
-            return char1 < char2 ? -1 : 1;
+            return char1 - char2;
         }
 
         if (char1 == '\0') {
             return 0;
         }
     }
+}
+
+int forward_shuffle_cmp(...) {
+    return shuffle_cmp(a, b, 1);
 }
 
 void test_shuffle_cmp() {
@@ -172,7 +176,7 @@ void test_shuffle_cmp() {
 
     // 7
     shuffle_direction = -1;
-    book = "\0гdwф\0яdwф";
+    book = "гdwф\0" "яdwф"; // обратить внимание
     ind1 = 6;
     ind2 = 13;
     assert(shuffle_cmp(&ind1, &ind2) == -1);
@@ -195,16 +199,18 @@ void test_shuffle_cmp() {
 char* ReadBook(const char* filename, int size) {
     char *book = calloc(size, sizeof(char));
     FILE *file = fopen(filename, "rb");
-    if (file == 0 || fread(book, sizeof(*book), size, file) != size) {
-        puts("Something wrong");
-        if (file != 0 && feof(file)) {
+    if (!file) return NULL;
+    if (fread(book, sizeof(*book), size, file) != size) {
+        /*puts("Something wrong");
+        if (feof(file)) {
             printf("Error reading: unexpected end of file\n");
         } else if (ferror(file)) {
             perror("Error reading");
         }
         free(book);
         fclose(file);
-        exit(1);
+        exit(1); // return 0; !!!!!!!!!!!!!!!!!*/
+        return NULL;
     }
     fclose(file);
 
@@ -244,7 +250,7 @@ int main(int argc, char const *argv[])
     size = findSize(filename);
     printf("%d\n", size);
 
-    book = ReadBook(filename, size);
+    book = ReadBook(filename, size);  // !!!!!!!!!!!! ReadBuffer
     
     linesCount = 1; // First line doesn't need \n
     for (int i = 1; i < size; ++i) {
