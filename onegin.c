@@ -7,7 +7,7 @@
 #include "onegin.h"
 
 long FindFileSize(const char *filename) {
-    struct stat st;
+    struct stat st = {};
      
     if (stat(filename, &st) == 0) {
         return st.st_size;
@@ -17,43 +17,63 @@ long FindFileSize(const char *filename) {
 }
 
 int IsMiddleByteInUtf8(unsigned char byte) {
+    // Проверяет, является ли байт продолжением (а не началом) последовательности символа в UTF-8
+    // Проверяем, что старшие два бита = 10
     return byte >= 0x80 && byte < 0xc0;
 }
 
 int SkipCharacter(int character) {
-    return (character >= 0x20 && character <= 0x40) || (character >= 0x5b && character <= 0x60) || (character >= 0x7b && character <= 0x7e);
+    // Выкидывает символы, которые не должны сравниваться во время сортировки
+    return (character >= 0x20 && character <= 0x40) // Символы пробел..@
+        || (character >= 0x5b && character <= 0x60) // Символы [..`
+        || (character >= 0x7b && character <= 0x7e); // Символы {..~
 }
 
-int ReadUtf8Char(const char *staringPos, int direction, int *value) {
+int ReadUtf8Char(const char *staringPos, Direction direction, int *value) {
+    assert(direction == FORWARD || direction == BACKWARD);
+
     const unsigned char *pos = (const unsigned char *) staringPos;
     int result = 1;
     *value = *pos;
 
-    int continueReading = direction == 1 || IsMiddleByteInUtf8(*pos);
-    while (continueReading) {
-        pos += direction;
-        int isMiddleByte = IsMiddleByteInUtf8(*pos);
+    int continueReading = direction == FORWARD || IsMiddleByteInUtf8(*pos);
+    if (direction == FORWARD) {
+        while (continueReading) {
+            pos += direction;
+            int isMiddleByte = IsMiddleByteInUtf8(*pos);
 
-        if (direction == 1 && isMiddleByte) {
-            *value = *value * 0x100 + *pos;
+            if (isMiddleByte) {
+                // Припишем прочитанный байт справа от числа
+                *value = *value * 0x100 + *pos;
+            }
+
             ++result;
-        } else if(direction == -1) {
-            *value = 0x100 * *pos + *value;
-            ++result;
+            continueReading = isMiddleByte;
         }
+    } else {
+        while (continueReading) {
+            pos += direction;
+            int isMiddleByte = IsMiddleByteInUtf8(*pos);
 
-        continueReading = isMiddleByte;
+            // Припишем прочитанный байт слева от числа
+            *value = 0x100 * *pos + *value;
+
+            ++result;
+            continueReading = isMiddleByte;
+        }
     }
 
-    return result * (direction > 0 ? 1 : -1);
+    return result * (direction == FORWARD ? 1 : -1);
 }
 
 
-int ShuffleCmp(const StringView *str1, const StringView *str2, int shuffle_direction) {
+int ShuffleCmp(const StringView *str1, const StringView *str2, Direction shuffle_direction) {
+    assert(shuffle_direction == FORWARD || shuffle_direction == BACKWARD);
+
     const char *str_ptr1 = str1->str;
     const char *str_ptr2 = str2->str;
 
-    if (shuffle_direction == -1) {
+    if (shuffle_direction == BACKWARD) {
         // Сделаем str_ptr указателем на последний символ в строке
         str_ptr1 += str1->len - 1;
         str_ptr2 += str2->len - 1;
@@ -83,10 +103,10 @@ int ShuffleCmp(const StringView *str1, const StringView *str2, int shuffle_direc
 }
 
 int ForwardShuffleCmp(const void * a, const void * b) {
-    return ShuffleCmp((const StringView *) a, (const StringView *) b, 1);
+    return ShuffleCmp((const StringView *) a, (const StringView *) b, FORWARD);
 }
 int BackwardShuffleCmp(const void * a, const void * b) {
-    return ShuffleCmp((const StringView *) a, (const StringView *) b, -1);
+    return ShuffleCmp((const StringView *) a, (const StringView *) b, BACKWARD);
 }
 
 String ReadFileFully(const char *filename) {
@@ -148,13 +168,13 @@ void FreeBook(const Book *book) {
     free(book->lines);
 }
 
-StringView* CreateSortingShuffle(const Book *book, int shuffle_direction) {
+StringView* CreateSortingShuffle(const Book *book, Direction shuffle_direction) {
     StringView *shuffle = calloc(book->lines_count, sizeof(StringView));
     for (int i = 0; i < book->lines_count; ++i) {
         shuffle[i] = book->lines[i];
     }
 
-    qsort(shuffle, book->lines_count, sizeof(StringView), (shuffle_direction == 1) ? ForwardShuffleCmp : BackwardShuffleCmp);
+    qsort(shuffle, book->lines_count, sizeof(StringView), (shuffle_direction == FORWARD) ? ForwardShuffleCmp : BackwardShuffleCmp);
     return shuffle;
 }
 
@@ -193,11 +213,11 @@ int SortOnegin() {
         return 1;
     }
 
-    StringView *shuffle = CreateSortingShuffle(&book, 1);
+    StringView *shuffle = CreateSortingShuffle(&book, FORWARD);
     WriteTitleAndContentIntoFile(outfile, "\tSORTING ONEGIN IN DEFAULT ORDER\n", shuffle, book.lines_count);
     free(shuffle);
 
-    shuffle = CreateSortingShuffle(&book, -1);
+    shuffle = CreateSortingShuffle(&book, BACKWARD);
     WriteTitleAndContentIntoFile(outfile, "\n\tSORTING ONEGIN IN REVERSE ORDER\n", shuffle, book.lines_count);
     free(shuffle);
 

@@ -30,6 +30,11 @@ typedef struct {
     StringView *lines;
 } Book;
 
+//! 
+typedef enum {
+    FORWARD = 1, BACKWARD = -1
+} Direction;
+
 
 /* UTF-8 related functions */
 
@@ -42,10 +47,10 @@ int SkipCharacter(int character);
 
 //! Читает полностью символ UTF-8.
 //! @param startingPos Ссылка на начальную позицию строки
-//! @param direction 1 или -1. Задает направление, в какую сторону от startingPos читать символ.
+//! @param direction типа Direction. Задает направление, в какую сторону от startingPos читать символ.
 //! @param value Ссылка на int, в который будет записан символ.
 //! @result Возвращает количество прочитанных символов (если direction < 0, то значение отрицательное)
-int ReadUtf8Char(const char *staringPos, int direction, int *value);
+int ReadUtf8Char(const char *staringPos, Direction direction, int *value);
 
 
 /* Sorting functions */
@@ -53,9 +58,9 @@ int ReadUtf8Char(const char *staringPos, int direction, int *value);
 //! Сравнивает две строки.
 //! @param str1 Первая строка типа StringView
 //! @param str2 Вторая строка типа StringView
-//! @param shuffle_direction Равен 1, если требуется сравнить строки с начала, или равен -1 для их сравнения с конца.
+//! @param shuffle_direction Задает направление. Имеет тип Direction.
 //! @result Число меньше 0, если str1 < str2; больше 0, если str1 > str2; равное 0, если str1 == str2.
-int ShuffleCmp(const StringView *str1, const StringView *str2, int shuffle_direction);
+int ShuffleCmp(const StringView *str1, const StringView *str2, Direction shuffle_direction);
 
 //! Компаратор для qsort для сравнения StringView с начала.
 int ForwardShuffleCmp(const void *, const void *);
@@ -65,9 +70,9 @@ int BackwardShuffleCmp(const void *, const void *);
 
 //! Генерирует перестановку строк в книге.
 //! @param book Книга
-//! @param shuffle_direction 1 или -1: определяет тип сортировки. См. ShuffleCmp
+//! @param shuffle_direction определяет тип сортировки. См. ShuffleCmp
 //! @result Массив строк типа StringView в отсортированном порядке.
-StringView* CreateSortingShuffle(const Book *book, int shuffle_direction);
+StringView* CreateSortingShuffle(const Book *book, Direction shuffle_direction);
 
 
 /* I/O functions */
